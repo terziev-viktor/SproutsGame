@@ -217,7 +217,6 @@ var app = {
 
             if(the_step.equals("draw_new_circle")) {   
                 let touches = evt.changedTouches;
-                ongoingTouches.push(copyTouch(touches[0])); 
                 let next_circle = new Circle(touches[0].pageX, touches[0].pageY);
                 if(circleIsOnALine(next_circle)) {
                     drawCircle(next_circle);
@@ -226,12 +225,12 @@ var app = {
                 }
             } else if(the_step.equals("link_begin")) { 
                 let touches = evt.changedTouches;
-                ongoingTouches.push(copyTouch(touches[0]));
+                ongoingTouches.push(copyTouch(touches[0])); // we start drawing from here so we add it as an on going touch
                 let current_circle = new Circle(touches[0].pageX, touches[0].pageY);
                 let colliding_cirlce = getCollidingCircleIndex(current_circle);
                 if(colliding_cirlce > -1) {
                     the_step.next();
-                }
+                } // else do nothing because the player did not start drawing from an existing circle
             } else  {
                 // maybe we want more steps ?
             }
