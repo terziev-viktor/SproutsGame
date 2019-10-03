@@ -56,6 +56,18 @@ class Circle {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this.lines = 3; // how many lines can this circle handle,
+        // lines = 0 means the circle is dead and it cant be used anymore
+    }
+
+    is_alive() {
+        return this.lines > 0;
+    }
+
+    add_line() {
+        if(this.lines > 0) {
+            --this.lines;
+        }
     }
 
     get X() {
@@ -227,9 +239,13 @@ var app = {
                 let touches = evt.changedTouches;
                 ongoingTouches.push(copyTouch(touches[0])); // we start drawing from here so we add it as an on going touch
                 let current_circle = new Circle(touches[0].pageX, touches[0].pageY);
-                let colliding_cirlce = getCollidingCircleIndex(current_circle);
-                if(colliding_cirlce > -1) {
-                    the_step.next();
+                let colliding_circle = getCollidingCircleIndex(current_circle);
+                if(colliding_circle > -1) {
+                    let the_circle = circles[colliding_circle];
+                    if(the_circle.is_alive()) {
+                        the_circle.add_line();
+                        the_step.next();
+                    } 
                 } // else do nothing because the player did not start drawing from an existing circle
             } else  {
                 // maybe we want more steps ?
@@ -247,10 +263,13 @@ var app = {
                 if (idx >= 0) {
                     let c  = new Circle(touches[idx].pageX, touches[idx].pageY);
                     let i = getCollidingCircleIndex(c);
+                    let the_circle = circles[i];
+
                     if(i == -1) {
                         alert("UNDO not implemented");
                         the_step.next();
                     } else {
+                        the_circle.add_line();
                         the_step.next(); // draw new circle
                     }
                     ongoingTouches.splice(idx, 1);  // remove it; we're done
