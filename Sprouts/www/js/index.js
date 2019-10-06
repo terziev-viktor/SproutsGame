@@ -122,11 +122,10 @@ function colorForTouch(touch) {
     var g = Math.random() * 255;
     var b = Math.random() * 255;
 
-    r = r.toString(16); // make it a hex digit
-    g = g.toString(16); // make it a hex digit
-    b = b.toString(16); // make it a hex digit
+    r = Math.round(r).toString(16); // make it a hex digit
+    g = Math.round(g).toString(16); // make it a hex digit
+    b = Math.round(b).toString(16); // make it a hex digit
     var color = "#" + r + g + b;
-    console.log("color for touch with identifier " + touch.identifier + " = " + color);
     return color;
 };
 
@@ -158,7 +157,7 @@ function getCollidingCircleIndex(some_circle) {
 function drawCircle(ctx, x, y) {
     ctx.beginPath();
     ctx.arc(x, y, CIRCLE_RADIUS, 0, 2 * Math.PI, false);
-    ctx.stroke();
+    ctx.fill();
 }
 
 function drawCircle(circle) {
@@ -166,7 +165,7 @@ function drawCircle(circle) {
     let ctx = el.getContext("2d");
     ctx.beginPath();
     ctx.arc(circle.X, circle.Y, CIRCLE_RADIUS, 0, 2 * Math.PI, false);
-    ctx.stroke();
+    ctx.fill();
 }
 
 // object for syncronizing the game steps
@@ -213,7 +212,28 @@ function circleIsOnALine(circle) {
     return true; // mock of the function for now
 }
 
+function UNDO() {
+    let el = document.getElementsByTagName("canvas")[0];
+    let ctx = el.getContext("2d");
+    console.log("UNDO() ongoingTouches.length=" + ongoingTouches.length);
+    for(let i = 0; i < ongoingTouches.length; ++i) {
+        console.log("(x=" + ongoingTouches[i].pageX + ",y=" + ongoingTouches[i].pageY + ");");
+    }
+    for(let i = 0; i < ongoingTouches.length - 1; ++i) {
+        ctx.beginPath();
+        ctx.moveTo(ongoingTouches[i].pageX, ongoingTouches[i].pageY);
+        ctx.lineTo(ongoingTouches[i + 1].pageX, ongoingTouches[i + 1].pageY);
+        ctx.lineWidth = LINE_WIDTH + 5;
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+    }
+
+    ongoingTouches = [];
+}
+
 var app = {
+
+    
     // Application Constructor
     initialize: function() {
         document.addEventListener('deviceready', this.onDeviceReady.bind(this), false);
@@ -222,6 +242,8 @@ var app = {
         HEIGHT = window.screen.height;
         thecanvas.height = HEIGHT;
         thecanvas.width = WIDTH;
+        thecanvas.style.backgroundColor = "#ffffff";
+
         the_step = new Step();
 
         thecanvas.addEventListener("touchstart", function (evt) { // Handle touch start
@@ -231,19 +253,23 @@ var app = {
                 let touches = evt.changedTouches;
                 let next_circle = new Circle(touches[0].pageX, touches[0].pageY);
                 if(circleIsOnALine(next_circle)) {
+                    // on a line == has 2 lines going out of it
+                    next_circle.add_line();
+                    next_circle.add_line();
                     drawCircle(next_circle);
                     circles.push(next_circle);
                     the_step.next();
                 }
             } else if(the_step.equals("link_begin")) { 
                 let touches = evt.changedTouches;
-                ongoingTouches.push(copyTouch(touches[0])); // we start drawing from here so we add it as an on going touch
+                console.log("pushing (x=" + touches[0].pageX + ",y=" + touches[0].pageY + ")");
                 let current_circle = new Circle(touches[0].pageX, touches[0].pageY);
                 let colliding_circle = getCollidingCircleIndex(current_circle);
                 if(colliding_circle > -1) {
                     let the_circle = circles[colliding_circle];
                     if(the_circle.is_alive()) {
                         the_circle.add_line();
+                        ongoingTouches.push(copyTouch(touches[0])); // we start drawing from here so we add it as an on going touch
                         the_step.next();
                     } 
                 } // else do nothing because the player did not start drawing from an existing circle
@@ -260,19 +286,26 @@ var app = {
 
                 let touches = evt.changedTouches;
                 let idx = ongoingTouchIndexById(touches[0].identifier);
+
                 if (idx >= 0) {
                     let c  = new Circle(touches[idx].pageX, touches[idx].pageY);
                     let i = getCollidingCircleIndex(c);
                     let the_circle = circles[i];
 
                     if(i == -1) {
-                        alert("UNDO not implemented");
+                        UNDO();
+                        //alert("UNDO not implemented");
+                        the_step.next();
+                    } else if(!the_circle.is_alive()) {
+                        UNDO();
+                        //alert("UNDO not implemented");
                         the_step.next();
                     } else {
                         the_circle.add_line();
                         the_step.next(); // draw new circle
                     }
-                    ongoingTouches.splice(idx, 1);  // remove it; we're done
+                    ongoingTouches = []; // start the new "cycle"
+                    
                 } else {
                     console.log("error: indx < 0");
                 }
@@ -311,6 +344,8 @@ var app = {
                         ongoingTouches.splice(idx, 1, copyTouch(touches[i]));  // swap in the new touch record
                     }
                 }
+                console.log("pushing (x=" + touches[touches.length - 1].pageX + ",y=" + touches[touches.length - 1].pageY + ")");
+                ongoingTouches.push(copyTouch(touches[touches.length - 1]));
             }
         }, false);
 
@@ -326,9 +361,8 @@ var app = {
 
     // Update DOM on a Received Event
     receivedEvent: function() {
-        let circle1 = new Circle(WIDTH / 2 + 5 * CIRCLE_RADIUS, HEIGHT / 2), circle2 = new Circle(WIDTH / 2 - 5 * CIRCLE_RADIUS, HEIGHT / 2);
-        let el = document.getElementsByTagName("canvas")[0];
-        let ctx = el.getContext("2d");
+        let circle1 = new Circle(WIDTH / 2 + 7 * CIRCLE_RADIUS, HEIGHT / 2), 
+            circle2 = new Circle(WIDTH / 2 - 7 * CIRCLE_RADIUS, HEIGHT / 2);
         circles.push(circle1);
         circles.push(circle2);
         drawCircle(circle1);
